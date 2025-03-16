@@ -1,15 +1,27 @@
 [package]
 name = "iris"
 version = "0.1.0"
-edition = "2021"
 publish = false
 
-[lints]
-workspace = true
+[lib]
+name = "iris"
+path = "lib/main.rs"
+edition = "2024"
+
+[[bin]]
+name = "iris-gui"
+path = "gui/main.rs"
+edition = "2024"
 
 [dependencies]
-eframe = { workspace = true, features = ["default"] }
-env_logger = { version = "0.10", default-features = false, features = [
+eframe = { version = "0.31.1", features = ["default"] }
+egui_commonmark = "0.20.0"
+env_logger = { version = "0.11.7", default-features = false, features = [
     "auto-color",
     "humantime",
 ] }
+log = "0.4.26"
+reqwest = { version = "0.12.14", features = ["blocking", "json"] }
+serde = { version = "1.0.219", features = ["derive"] }
+strum = "0.27.1"
+strum_macros = "0.27.1"
