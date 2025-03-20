@@ -8,6 +8,7 @@ use strum::IntoEnumIterator;
 
 use iris::{self, Actions, IrisConfig};
 
+/// Represents the different states of the application.
 enum AppStates {
     Init,
     Wait,
@@ -15,6 +16,7 @@ enum AppStates {
     Response(String),
 }
 
+/// The main function that initializes and runs the eframe application.
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
@@ -41,7 +43,15 @@ fn main() -> eframe::Result {
 
     eframe::run_simple_native("Iris", options, move |ctx, _frame| {
         egui::CentralPanel::default().show(ctx, |ui| match &app_state {
-            AppStates::Init => render_init_ui(ui, &mut active_action, &mut app_state, &mut user_input, sender.clone(), context.clone(), iris_config.clone()),
+            AppStates::Init => render_init_ui(
+                ui,
+                &mut active_action,
+                &mut app_state,
+                &mut user_input,
+                sender.clone(),
+                context.clone(),
+                iris_config.clone(),
+            ),
             AppStates::Wait => render_wait_ui(ui, &receiver, &mut app_state),
             AppStates::Response(res) => render_response_ui(ui, res, &mut markdown_cache),
             AppStates::Error(err) => render_error_ui(ui, err),
@@ -49,6 +59,7 @@ fn main() -> eframe::Result {
     })
 }
 
+/// Reads context from standard input and stores it in the provided string.
 fn read_context_from_stdin(context: &mut String) -> Result<(), String> {
     let stdin = io::stdin();
     for line in stdin.lines() {
@@ -58,7 +69,16 @@ fn read_context_from_stdin(context: &mut String) -> Result<(), String> {
     Ok(())
 }
 
-fn render_init_ui(ui: &mut egui::Ui, active_action: &mut Actions, app_state: &mut AppStates, user_input: &mut String, sender: Sender<AppStates>, context: String, iris_config: IrisConfig) {
+/// Renders the initial UI where the user can select an action and provide input.
+fn render_init_ui(
+    ui: &mut egui::Ui,
+    active_action: &mut Actions,
+    app_state: &mut AppStates,
+    user_input: &mut String,
+    sender: Sender<AppStates>,
+    context: String,
+    iris_config: IrisConfig,
+) {
     ui.horizontal(|ui| {
         for action in Actions::iter() {
             ui.radio_value(active_action, action.clone(), action.to_string());
@@ -85,7 +105,12 @@ fn render_init_ui(ui: &mut egui::Ui, active_action: &mut Actions, app_state: &mu
         let iris_config_ref = iris_config.clone();
 
         execute(move || {
-            let new_state = match iris::run(&action_ref, &context_ref, Some(&user_input_ref), iris_config_ref) {
+            let new_state = match iris::run(
+                &action_ref,
+                &context_ref,
+                Some(&user_input_ref),
+                iris_config_ref,
+            ) {
                 Some(res) => AppStates::Response(res),
                 _ => AppStates::Error("Failed to generate response!".to_owned()),
             };
@@ -98,6 +123,7 @@ fn render_init_ui(ui: &mut egui::Ui, active_action: &mut Actions, app_state: &mu
     }
 }
 
+/// Renders the UI while waiting for a response from the iris service.
 fn render_wait_ui(ui: &mut egui::Ui, receiver: &Receiver<AppStates>, app_state: &mut AppStates) {
     if let Ok(res) = receiver.try_recv() {
         *app_state = res;
@@ -106,12 +132,14 @@ fn render_wait_ui(ui: &mut egui::Ui, receiver: &Receiver<AppStates>, app_state: 
     ui.label("Loading...");
 }
 
+/// Renders the response received from the iris service.
 fn render_response_ui(ui: &mut egui::Ui, response: &str, markdown_cache: &mut CommonMarkCache) {
     egui::ScrollArea::vertical().show(ui, |ui| {
         CommonMarkViewer::new().show(ui, markdown_cache, response);
     });
 }
 
+/// Renders an error message and provides an exit button.
 fn render_error_ui(ui: &mut egui::Ui, error: &str) {
     ui.label(error);
 
@@ -120,6 +148,7 @@ fn render_error_ui(ui: &mut egui::Ui, error: &str) {
     }
 }
 
+/// Executes a function in a separate thread.
 fn execute<F: FnOnce() + Send + 'static>(f: F) {
     std::thread::spawn(f);
 }
