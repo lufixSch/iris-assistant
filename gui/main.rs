@@ -2,14 +2,15 @@
 
 use eframe::egui;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
-use log::{debug, error, info};
-use std::io::{self, Read};
+use std::io::{self};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use strum::IntoEnumIterator;
 
-use iris::{self, Actions};
+use iris::{self, Actions, IrisConfig};
 
 enum AppStates {
     Init,
+    Wait,
     Error(String),
     Response(String),
 }
@@ -25,6 +26,7 @@ fn main() -> eframe::Result {
     };
 
     let mut app_state = AppStates::Init;
+    let response_channel: (Sender<AppStates>, Receiver<AppStates>) = channel();
 
     // Our application state:
     let mut active_action = Actions::Explain;
@@ -39,6 +41,11 @@ fn main() -> eframe::Result {
         context += "\n";
         context.push_str(&line)
     }
+
+    let iris_config = match IrisConfig::load() { Ok(conf) => conf, Err(err) => {
+        app_state  = AppStates::Error(err);
+        IrisConfig::default()
+    } };
 
     eframe::run_simple_native("Iris", options, move |ctx, _frame| {
         egui::CentralPanel::default().show(ctx, |ui| match &app_state {
@@ -62,11 +69,32 @@ fn main() -> eframe::Result {
                 }
 
                 if ui.button("Send").clicked() {
-                    app_state = match iris::run(&active_action, &context, Some(&user_input)) {
-                        Some(res) => AppStates::Response(res),
-                        _ => AppStates::Error("Failed to generate response!".to_owned()),
-                    }
+                    let ctx = ui.ctx().clone();
+                    let sender = response_channel.0.clone();
+                    let context_ref = context.clone();
+                    let action_ref = active_action.clone();
+                    let user_input_ref = user_input.clone();
+                    let iris_config_ref = iris_config.clone();
+
+                    execute(move || {
+                        let new_state = match iris::run(&action_ref, &context_ref, Some(&user_input_ref), iris_config_ref) {
+                            Some(res) => AppStates::Response(res),
+                            _ => AppStates::Error("Failed to generate response!".to_owned()),
+                        };
+
+                        let _ = sender.send(new_state);
+                        ctx.request_repaint();
+                    });
+
+                    app_state = AppStates::Wait
                 }
+            }
+            AppStates::Wait => {
+                if let Ok(res) = response_channel.1.try_recv() {
+                    app_state = res;
+                }
+
+                ui.label("Loading...");
             }
             AppStates::Response(res) => {
                 egui::ScrollArea::vertical().show(ui, |ui| {
@@ -76,10 +104,14 @@ fn main() -> eframe::Result {
             AppStates::Error(err) => {
                 ui.label(err);
 
-                if ui.button("Try Again").clicked() {
-                    app_state = AppStates::Init
+                if ui.button("Exit").clicked() {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                 }
             }
         });
     })
+}
+
+fn execute<F: FnOnce() + Send + 'static>(f: F) {
+    std::thread::spawn(f);
 }

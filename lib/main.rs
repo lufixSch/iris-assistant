@@ -1,6 +1,7 @@
-use log::{debug, error, info};
+use log::debug;
 use openai::{chat_completion, OpenAIMessage, OpenAIRequest};
-use prompts::{ASK_PROMPT, EDIT_PROMPT, EXPLAIN_PROMPT, SUMMARIZE_PROMPT};
+use prompts::Prompts;
+use serde_derive::{Deserialize, Serialize};
 use std::env;
 use strum_macros::{Display, EnumIter};
 
@@ -15,16 +16,60 @@ pub enum Actions {
     Ask,
 }
 
-pub fn run(action: &Actions, context: &str, user_input: Option<&str>) -> Option<String> {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct IrisConfig {
+    /// Name of the environment variable where the API key is saved
+    openai_api_key: String,
+
+    /// URL of the Open AI API (including '/v1')
+    openai_api_endpoint: String,
+
+    prompts: Prompts,
+}
+
+impl Default for IrisConfig {
+    fn default() -> Self {
+        Self {
+            openai_api_key: "OPENAI_API_KEY".to_owned(),
+            openai_api_endpoint: "https://api.openai.com/v1".to_owned(),
+            prompts: Prompts::default()
+        }
+    }
+}
+
+impl IrisConfig {
+    /// Load Iris configuration including environment variables
+    pub fn load() -> Result<Self, String> {
+        debug!("Load Config");
+
+        let mut conf: IrisConfig = match confy::load("iris", "config") {
+            Ok(config) => config,
+            Err(e) => return Err(format!("Unable to load Iris config: {}", e)),
+        };
+
+        let var_name = conf.openai_api_key.clone();
+        conf.openai_api_key = match env::var(var_name) {
+            Ok(key) => key,
+            Err(e) => return Err(format!("Error retrieving {}: {}", conf.openai_api_key, e)),
+        };
+
+        Ok(conf)
+    }
+}
+
+pub fn run(
+    action: &Actions,
+    context: &str,
+    user_input: Option<&str>,
+    config: IrisConfig,
+) -> Option<String> {
     debug!("Run Action");
 
-    let api_key = env::var("OPEN_WEBUI_API_KEY").unwrap().to_string();
-
     let prompt = match action {
-        Actions::Explain => &EXPLAIN_PROMPT,
-        Actions::Summarize => &SUMMARIZE_PROMPT,
-        Actions::Edit => &EDIT_PROMPT,
-        Actions::Ask => &ASK_PROMPT,
+        Actions::Explain => &config.prompts.explain,
+        Actions::Summarize => &config.prompts.summarize,
+        Actions::Edit => &config.prompts.edit,
+        Actions::Ask => &config.prompts.ask,
     };
 
     let openai_req = OpenAIRequest {
@@ -36,7 +81,11 @@ pub fn run(action: &Actions, context: &str, user_input: Option<&str>) -> Option<
         stream: false,
     };
 
-    let response = chat_completion(&openai_req, &api_key, "http://ltd-nas.lan:1132/api");
+    let response = chat_completion(
+        &openai_req,
+        &config.openai_api_key,
+        &config.openai_api_endpoint,
+    );
 
     Some(response.choices[0].message.content.clone())
 }

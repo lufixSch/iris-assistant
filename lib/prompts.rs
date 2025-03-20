@@ -1,5 +1,8 @@
+use serde_derive::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Prompt {
-    content: &'static str,
+    pub content: String,
 }
 
 impl Prompt {
@@ -13,23 +16,21 @@ impl Prompt {
     }
 }
 
-// pub struct ActionPrompt {
-// system: Prompt,
-// user: Prompt,
-// }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Prompts {
+    pub explain: Prompt,
+    pub summarize: Prompt,
+    pub edit: Prompt,
+    pub ask: Prompt,
+}
 
-pub static EXPLAIN_PROMPT: Prompt = Prompt {
-    content: "---TEXT---\n{context}\n---END OF TEXT---\n\nPlease provide a short and precise explanation of the text given above."
-};
-
-pub static SUMMARIZE_PROMPT: Prompt = Prompt {
-    content: "---TEXT---\n{context}\n---END OF TEXT---\n\nPlease provide a short and precise summary of the text given above."
-};
-
-pub static EDIT_PROMPT: Prompt = Prompt {
-    content: "---TEXT---\n{context}\n---END OF TEXT---\n\nPlease edit the text above to fulfill the following request: {user_input}"
-};
-
-pub static ASK_PROMPT: Prompt = Prompt {
-    content: "---TEXT---\n{context}\n---END OF TEXT---\n\nBased on the text above answer the following question: {user_input}\nOnly answer based on the information given in the Text."
-};
+impl Default for Prompts {
+    fn default() -> Self {
+        Self {
+            explain: Prompt { content: "---TEXT---\n{context}\n---END OF TEXT---\n\nPlease provide a short and precise explanation of the text given above.".to_owned() },
+            summarize: Prompt { content: "---TEXT---\n{context}\n---END OF TEXT---\n\nPlease provide a short and precise explanation of the text given above.".to_owned() },
+            edit: Prompt { content: "---TEXT---\n{context}\n---END OF TEXT---\n\nPlease provide a short and precise explanation of the text given above.".to_owned() },
+            ask: Prompt { content: "---TEXT---\n{context}\n---END OF TEXT---\n\nPlease provide a short and precise explanation of the text given above.".to_owned() }
+        }
+    }
+}
