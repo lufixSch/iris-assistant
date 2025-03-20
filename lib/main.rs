@@ -9,10 +9,15 @@ mod openai;
 pub mod prompts;
 
 #[derive(PartialEq, EnumIter, Display, Copy, Clone)]
+/// Represents different actions that can be performed by the Iris assistant.
 pub enum Actions {
+    /// Explains a given context or input.
     Explain,
+    /// Summarizes a given context or input.
     Summarize,
+    /// Edits a given context or input.
     Edit,
+    /// Asks a question based on the given context or input.
     Ask,
 }
 
@@ -24,6 +29,7 @@ pub struct IrisConfig {
     /// URL of the Open AI API (including '/v1')
     openai_api_endpoint: String,
 
+    /// Prompt templates for the different actions
     prompts: Prompts,
 }
 
@@ -32,7 +38,7 @@ impl Default for IrisConfig {
         Self {
             openai_api_key: "OPENAI_API_KEY".to_owned(),
             openai_api_endpoint: "https://api.openai.com/v1".to_owned(),
-            prompts: Prompts::default()
+            prompts: Prompts::default(),
         }
     }
 }
@@ -57,6 +63,19 @@ impl IrisConfig {
     }
 }
 
+/// Executes the Iris assistant.
+///
+/// # Arguments
+///
+/// * `action` - A reference to an `Actions` enum variant indicating the desired action (e.g., Explain, Summarize).
+/// * `context` - A string slice providing additional context for the action.
+/// * `user_input` - An optional string slice containing user input for the action.
+/// * `config` - The `IrisConfig` struct containing necessary configuration details.
+///
+/// # Returns
+///
+/// An `Option<String>` where the value is `Some(String)` if a response is successfully received from the LLM,
+/// and `None` if an error occurs during the process.
 pub fn run(
     action: &Actions,
     context: &str,
