@@ -8,7 +8,7 @@ use strum_macros::{Display, EnumIter};
 mod openai;
 pub mod prompts;
 
-#[derive(PartialEq, EnumIter, Display, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, EnumIter, Display, Copy, Clone)]
 /// Represents different actions that can be performed by the Iris assistant.
 pub enum Actions {
     /// Explains a given context or input.
