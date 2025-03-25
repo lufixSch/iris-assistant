@@ -1,7 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use eframe::egui::{self, Align, Button, Layout, Pos2, Rect};
-use eframe::emath::align;
+use eframe::egui::{self, Align, Layout};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use std::io::{self};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -10,7 +9,7 @@ use strum::IntoEnumIterator;
 use iris::{self, Actions, IrisConfig};
 
 pub mod shortcuts;
-use shortcuts::check_action_shortcuts;
+use shortcuts::{ActionKeyboardShortcuts, ResponseKeyboardShortcuts, SubmitKeyboardShortcut};
 
 /// Represents the different states of the application.
 enum AppStates {
@@ -88,7 +87,9 @@ fn render_init_ui(
     iris_config: IrisConfig,
 ) {
     // Check Shortcuts
-    check_action_shortcuts(ui.ctx(), active_action);
+    if !ui.ctx().wants_keyboard_input() {
+        ActionKeyboardShortcuts::default().check(ui.ctx(), active_action);
+    }
 
     ui.horizontal(|ui| {
         for action in Actions::iter() {
@@ -109,7 +110,7 @@ fn render_init_ui(
     }
 
     ui.vertical_centered(|ui| {
-        if ui.button("Send").clicked() {
+        if ui.button("Send").clicked() || SubmitKeyboardShortcut::default().check(ui.ctx()) {
             let ctx = ui.ctx().clone();
             let context_ref = context.clone();
             let action_ref = active_action.clone();
@@ -149,11 +150,16 @@ fn render_wait_ui(ui: &mut egui::Ui, receiver: &Receiver<AppStates>, app_state: 
 
 /// Renders the response received from the iris service.
 fn render_response_ui(ui: &mut egui::Ui, response: &str, markdown_cache: &mut CommonMarkCache) {
-    // ui.with_layout(Layout::left_to_right( Align::Max), |ui| {
-    if ui.button("📋").clicked() {
-        ui.ctx().copy_text(response.to_owned());
+    if !ui.ctx().wants_keyboard_input() {
+        ResponseKeyboardShortcuts::default().check(ui.ctx(), response.to_owned());
     }
-    // });
+
+    ui.with_layout(Layout::default().with_cross_align(Align::RIGHT), |ui| {
+        if ui.button("📋").clicked() {
+            ui.ctx().copy_text(response.to_owned());
+        }
+    });
+    ui.add_space(5.0);
 
     egui::ScrollArea::vertical().show(ui, |ui| {
         CommonMarkViewer::new().show(ui, markdown_cache, response);

@@ -44,6 +44,18 @@ The GUI application reads context from standard input. To start it, run:
 iris-gui < path/to/context.txt
 ```
 
+#### Keyboard Shortcuts
+
+**Initial View:**
+- `X`: Explain
+- `S`: Summarize
+- `E`: Edit
+- `A`: Ask
+- `STRG/CMD - S`: Submit Request
+
+**Response View:**
+- `C`: Copy plain text response
+
 Replace `path/to/context.txt` with the path to your context file or use any other method to provide input via stdin.
 
 ### Using the Library
